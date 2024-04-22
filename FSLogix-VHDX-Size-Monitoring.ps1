@@ -3,14 +3,14 @@
     FSLogix VHDX Size Monitoring
 
 .DESCRIPTION
-    PowerShell script to monitor VHDX file size.
+    PowerShell script to monitor VHD and VHDX file size.
 
 .INPUTS
     No parameters. Variables are supposed to be set by the rmm solution this script is used in.
 
 .OUTPUTS
     Exit Code 0 = Successful - No files exceed any threshold.
-    Exit Code 1 = Alert - At least one file exceeds the alert threshold.
+    Exit Code 1 = Alert - At least one file exceeds the alert threshold or something else went wrong and the check wasn't executed successfully.
     Exit Code 2 = Warning - No file exceeds the alert threshold. At least one file exceeds the warning threshold.
 
 .LINK
@@ -36,21 +36,24 @@
     Declare local variables and global variables
 #>
 
+<# 
+
 # The following variables should be set through your rmm solution. 
 # Here some examples of possible declarations with explanations for each variable.
 # Tip: PowerShell variables are not case sensitive.
 
-<# 
-
+# Define either $FSLogixDir or Share, never both!
 $FSLogixDir = "Z:\FSLogix"
-$ThresholdWaring = 25
+$Share = FSLogix$
+
+$ThresholdWaring = 27
 $ThresholdAlert = 29
 
 #>
 
 # Set defaults, if not defined already
 if ($ThresholdWaring -eq $null) {
-    $ThresholdWaring = 25
+    $ThresholdWaring = 27
 }
 
 if ($ThresholdAlert -eq $null) {
@@ -115,20 +118,32 @@ function Write-ConsoleLog {
     Script entry point
 #>
 
-if ($FSLogixDir -eq $null) {
-    Log "ERROR! Sie haben $FSLogixDir nicht definiert."
+if (($FSLogixDir -eq $null) -and ($Share -eq $null)) {
+    Log "ERROR! Sie haben keinen Ort angegeben. Befüllen Sie entweder $FSLogixDir oder $Share."
     Exit 1
+} elseif (($FSLogixDir) -and ($Share)) {
+    Log "ERROR! Sie haben $FSLogixDir UND $Share angegeben. Welchen soll ich nun benutzen? Bitte nur eins von beidem angeben."
+    Exit 1
+} elseif ($FSLogixDir) {
+    Log "Sie haben folgenden Pfad angegeben: $($FSLogixDir)"
+    $Files = Get-ChildItem -Path $FSLogixDir -Include "*.vhdx", "*vhd" -Recurse
+    Log "Dort habe ich $($Files.Count) VHDX- oder VHD-Dateien finden können."
+} elseif ($Share) {
+    $Share = $Share.TrimStart('\')
+    $Path = $env:LOGONSERVER + '\' + $Share
+    Log "Sie haben '$($Share)' als $Share angegeben. Ich habe '$($env:LOGONSERVER)', als Domain Controller identifiziert. Daraus ergibt sich folgender Netzwerkpfad: $($Path)"
+    $Files = Get-ChildItem -Path $Path Include "*.vhdx", "*vhd" -Recurse
+    Log "Dort habe ich $($Files.Count) VHDX- oder VHD-Dateien finden können."
 }
 
-$Files = Get-ChildItem -Path $FSLogixDir -Filter *.vhdx -Recurse
 foreach ($f in $Files) {
     $size = (Get-Item $f.FullName).Length
     $sizeInGB = [math]::Round($size / 1GB,2)
     if ($sizeInGB -gt $ThresholdAlert) {
-        "WARNUNG! Datei '$($f.Name)' ist $($sizeInGB) GB groß."
+        "ALARM: Datei '$($f.Name)' ist $($sizeInGB) GB groß."
         $Alerts++
     } elseif ($sizeInGB -gt $ThresholdWaring) {
-        "Achtungs! Datei '$($f.Name)' ist $($sizeInGB) GB groß."
+        "VORSICHT: Datei '$($f.Name)' ist $($sizeInGB) GB groß."
         $Warning++
     } else {
         "INFO: Datei '$($f.Name)' ist $($sizeInGB) GB groß."
