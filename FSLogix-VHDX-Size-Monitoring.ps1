@@ -129,8 +129,11 @@ if (($FSLogixDir -eq $null) -and ($Share -eq $null)) {
     $Files = Get-ChildItem -Path $FSLogixDir -Include "*.vhdx", "*vhd" -Recurse
     Log "Dort habe ich $($Files.Count) VHDX- oder VHD-Dateien finden können."
 } elseif ($Share) {
+    # Use "nltest /dsgetdc:" to resolve the domain controller
+    $results = ((nltest /dsgetdc:) -replace ":", "=" -replace '\\', '\\' | Where-Object{$_ -match "="}) -join "`r`n" | ConvertFrom-StringData
+    new-object -TypeName PSCustomObject -Property $results
     $Share = $Share.TrimStart('\')
-    $Path = $env:LOGONSERVER + '\' + $Share
+    $Path = $results.Domänencontroller + '\' + $Share
     Log "Sie haben '$($Share)' als $Share angegeben. Ich habe '$($env:LOGONSERVER)', als Domain Controller identifiziert. Daraus ergibt sich folgender Netzwerkpfad: $($Path)"
     $Files = Get-ChildItem -Path $Path Include "*.vhdx", "*vhd" -Recurse
     Log "Dort habe ich $($Files.Count) VHDX- oder VHD-Dateien finden können."
