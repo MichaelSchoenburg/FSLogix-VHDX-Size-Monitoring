@@ -14,7 +14,7 @@
     Exit Code 2 = Warning - No file exceeds the alert threshold. At least one file exceeds the warning threshold.
 
 .LINK
-    https://github.com/MichaelSchoenburg/FSLogixVHDXSizeMonitoring
+    https://github.com/MichaelSchoenburg/FSLogix-VHDX-Size-Monitoring
 
 .NOTES
     Author: Michael Schönburg
