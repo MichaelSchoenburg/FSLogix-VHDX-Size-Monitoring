@@ -1,43 +1,28 @@
 <#
 .SYNOPSIS
-    T22-000215 - Rechnungsversand automatisieren
+    FSLogix VHDX Size Monitoring
 
 .DESCRIPTION
-    Long description
-
-.SYNTAX
-
-
-.PARAMETERS
-
-
-.EXAMPLE
-    PS C:\> <example usage>
-    Explanation of what the example does
+    PowerShell script to monitor VHDX file size.
 
 .INPUTS
-    Inputs (if any)
+    No parameters. Variables are supposed to be set by the rmm solution this script is used in.
 
 .OUTPUTS
-    Output (if any)
+    Exit Code 0 = Successful - No files exceed any threshold.
+    Exit Code 1 = Alert - At least one file exceeds the alert threshold.
+    Exit Code 2 = Warning - No file exceeds the alert threshold. At least one file exceeds the warning threshold.
 
-.RELATED LINKS
-    GitHub: https://github.com/MichaelSchoenburg/T22-000215
+.LINK
+    https://github.com/MichaelSchoenburg/FSLogixVHDXSizeMonitoring
 
 .NOTES
     Author: Michael Schönburg
     Version: v1.0
-    Last Edit: 11.02.2021
     
     This projects code loosely follows the PowerShell Practice and Style guide, as well as Microsofts PowerShell scripting performance considerations.
     Style guide: https://poshcode.gitbook.io/powershell-practice-and-style/
     Performance Considerations: https://docs.microsoft.com/en-us/powershell/scripting/dev-cross-plat/performance/script-authoring-considerations?view=powershell-7.1
-
-.REMARKS
-    To see the examples, type: "get-help Get-HotFix -examples".
-    For more information, type: "get-help Get-HotFix -detailed".
-    For technical information, type: "get-help Get-HotFix -full".
-    For online help, type: "get-help Get-HotFix -online"
 #>
 
 #region INITIALIZATION
@@ -51,6 +36,30 @@
     Declare local variables and global variables
 #>
 
+# The following variables should be set through your rmm solution. 
+# Here some examples of possible declarations with explanations for each variable.
+# Tip: PowerShell variables are not case sensitive.
+
+<# 
+
+$FSLogixDir = "Z:\FSLogix"
+$ThresholdWaring = 25
+$ThresholdAlert = 29
+
+#>
+
+# Set defaults, if not defined already
+if ($ThresholdWaring -eq $null) {
+    $ThresholdWaring = 25
+}
+
+if ($ThresholdAlert -eq $null) {
+    $ThresholdAlert = 29
+}
+
+# Declare counters
+$Alerts = 0
+$Warnings = 0
 
 #endregion DECLARATIONS
 #region FUNCTIONS
@@ -100,14 +109,38 @@ function Write-ConsoleLog {
     $VerbosePreference = $VerbosePreferenceBefore
 }
 
-
-
 #endregion FUNCTIONS
 #region EXECUTION
 <# 
     Script entry point
 #>
 
+if ($FSLogixDir -eq $null) {
+    Log "ERRO! Sie haben $FSLogixDir nicht definiert."
+    Exit 1
+}
 
+$Files = Get-ChildItem -Path $FSLogixDir -Filter *.vhdx -Recurse
+foreach ($f in $Files) {
+    $size = (Get-Item $f.FullName).Length
+    $sizeInGB = [math]::Round($size / 1GB,2)
+    if ($sizeInGB -gt $ThresholdAlert) {
+        "WARNUNG! Datei '$($f.Name)' ist $($sizeInGB) GB groß."
+        $Alerts++
+    } elseif ($sizeInGB -gt $ThresholdWaring) {
+        "Achtungs! Datei '$($f.Name)' ist $($sizeInGB) GB groß."
+        $Warning++
+    } else {
+        "INFO: Datei '$($f.Name)' ist $($sizeInGB) GB groß."
+    }
+}
+
+if ($Alerts -gt 0) {
+    Exit 1
+} elseif ($Warnings -gt 0) {
+    Exit 2
+} else {
+    Exit 0
+}
 
 #endregion EXECUTION
