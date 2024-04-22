@@ -116,7 +116,7 @@ function Write-ConsoleLog {
 #>
 
 if ($FSLogixDir -eq $null) {
-    Log "ERRO! Sie haben $FSLogixDir nicht definiert."
+    Log "ERROR! Sie haben $FSLogixDir nicht definiert."
     Exit 1
 }
 
