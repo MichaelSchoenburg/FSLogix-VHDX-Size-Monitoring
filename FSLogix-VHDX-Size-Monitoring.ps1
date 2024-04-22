@@ -135,7 +135,7 @@ if (($FSLogixDir -eq $null) -and ($Share -eq $null)) {
     $Share = $Share.TrimStart('\')
     $Path = $results.Domänencontroller + '\' + $Share
     Log "Sie haben '$($Share)' als $Share angegeben. Ich habe '$($results.Domänencontroller)', als Domain Controller identifiziert. Daraus ergibt sich folgender Netzwerkpfad: $($Path)"
-    $Files = Get-ChildItem -Path $Path Include "*.vhdx", "*vhd" -Recurse
+    $Files = Get-ChildItem -Path $Path -Include "*.vhdx", "*vhd" -Recurse
     Log "Dort habe ich $($Files.Count) VHDX- oder VHD-Dateien finden können."
 }
 
